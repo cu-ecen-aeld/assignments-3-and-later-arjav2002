@@ -1,4 +1,9 @@
 #include "systemcalls.h"
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <stdio.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -17,7 +22,7 @@ bool do_system(const char *cmd)
  *   or false() if it returned a failure
 */
 
-    return true;
+    return (system(cmd) == 0);
 }
 
 /**
@@ -59,6 +64,25 @@ bool do_exec(int count, ...)
  *
 */
 
+    pid_t procid = fork();
+    if(procid == 0 /*child*/)
+    {
+	    execv(command[0], command);
+	    exit(EXIT_FAILURE);
+    }
+    else if(procid == -1)
+    {
+	    return false;
+    }
+    else
+    {
+	    int status;
+	    pid_t retval = waitpid(procid, &status, 0);
+	    if(retval == -1) return false;
+	    printf("values: %d %d",  WIFEXITED(status), WEXITSTATUS(status));
+	    if(!WIFEXITED(status) || WEXITSTATUS(status)) return false;
+    }
+
     va_end(args);
 
     return true;
@@ -93,7 +117,37 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
+	int outputfd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+	if(outputfd<0)
+	{
+		perror("open()");
+		abort();	
+	}
+
+	pid_t kidpid;
+	switch(kidpid = fork())
+	{
+		case -1:
+			perror("fork()");
+			abort();
+			break;
+		case 0:
+			if(dup2(outputfd, 1) == -1) return false;
+			execv(command[0], command);
+			perror("execv()");
+			abort();
+			break;
+		default:
+			int status;
+        	    	pid_t retval = waitpid(kidpid, &status, 0);
+            		if(retval == -1) return false;
+            		if(!WIFEXITED(status) || WEXITSTATUS(status)) return false;
+			break;
+
+	}
+
     va_end(args);
 
     return true;
 }
+
