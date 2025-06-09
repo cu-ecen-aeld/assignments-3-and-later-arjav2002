@@ -124,7 +124,7 @@ cd ${OUTDIR}/rootfs
 #rm ${OUTDIR}/initramfs.cpio
 find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
 cd ${OUTDIR}
-ls
-rm initramfs.cpio.gz
-ls
+#ls
+#rm initramfs.cpio.gz
+#ls
 gzip -f initramfs.cpio
