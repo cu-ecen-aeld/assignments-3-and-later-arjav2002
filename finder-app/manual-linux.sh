@@ -67,6 +67,10 @@ if [ ! -d "${OUTDIR}/busybox" ]
 then
 git clone git://busybox.net/busybox.git
     cd busybox
+git config --global pack.windowMemory "100m"
+git config --global pack.SizeLimit "100m" 
+git config --global pack.threads "1"
+git config --global pack.window "0"
     git checkout ${BUSYBOX_VERSION}
     # TODO:  Configure busybox
 	make distclean
