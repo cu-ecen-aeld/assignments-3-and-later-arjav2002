@@ -52,7 +52,7 @@ fi
 
 #echo "Removing the old writer utility and compiling as a native application"
 #(cd ${WORKDIR} && make -f Makefile clean)
-(#cd ${WORKDIR} && make -f Makefile)
+#(cd ${WORKDIR} && make -f Makefile)
 
 for i in $( seq 1 $NUMFILES)
 do
