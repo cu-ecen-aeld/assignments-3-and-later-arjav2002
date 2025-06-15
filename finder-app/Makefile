@@ -1,5 +1,6 @@
 GCC:=gcc
 CC:=$(CROSS_COMPILE)$(GCC)
+all: clean writer
 writer : writer.o
 	$(CC) -o writer writer.o
 
