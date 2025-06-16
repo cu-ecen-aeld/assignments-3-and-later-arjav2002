@@ -47,8 +47,16 @@ int main(int argc, char* argv[])
 	if(sfd == -1)
 	{
 		perror("socket()");
+		return -1;
 	}
-
+	const int enable = 1;
+	if (setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
+	{
+		perror("setsockopt(SO_REUSEADDR) failed");
+		close(sfd);
+		return -1;
+	}
+	
 	off_t roff;
 
 	struct addrinfo *my_addrinfo=NULL;
