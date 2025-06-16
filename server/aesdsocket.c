@@ -19,12 +19,13 @@ static void handle_signal(int signal_number)
 	if(signal_number == SIGINT || signal_number == SIGTERM)
 	{
 		caughtsignal = true;
-
 	}
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+
+
 	struct sigaction sigtermint_act;
 	memset(&sigtermint_act, 0, sizeof(struct sigaction));
 	sigtermint_act.sa_handler = handle_signal;
@@ -47,6 +48,8 @@ int main()
 	{
 		perror("socket()");
 	}
+
+	off_t roff;
 
 	struct addrinfo *my_addrinfo=NULL;
 	struct addrinfo hints;
@@ -72,6 +75,19 @@ int main()
 		return -1;
 	}
 
+
+	if(argc > 1 && strcmp(argv[1], "-d") == 0)
+        {
+                pid_t p = fork();
+                if(p == -1)
+                {
+                        perror("fork()");
+                        return -1;
+                }
+                if(p) return 0;
+        }
+
+
         openlog(NULL, LOG_CONS | LOG_PERROR, LOG_SYSLOG);
 
 
@@ -80,8 +96,7 @@ int main()
 		if(rc)
 		{
 			perror("listen()");
-			freeaddrinfo(my_addrinfo);
-			return -1;
+			break;
 		}
 
 		socklen_t clientsocksize = sizeof(struct sockaddr_in);
@@ -89,36 +104,33 @@ int main()
 		if(!clientsock)
 		{
 			perror("malloc()");
-			freeaddrinfo(my_addrinfo);
-			return -1;
+			break;
 		}
 		int cfd = rc = accept(sfd, clientsock, &clientsocksize);
 		if(rc == -1)
 		{
 			perror("accept()");
-			freeaddrinfo(my_addrinfo);
 			free(clientsock);
-			return -1;
+			break;
 		}
 
 		assert(clientsocksize == sizeof(struct sockaddr_in));
 		
-		uint32_t clientaddr = ((struct sockaddr_in*)clientsock)->sin_addr.s_addr;
+		uint32_t clientaddr = htonl(((struct sockaddr_in*)clientsock)->sin_addr.s_addr);
 		syslog(LOG_INFO, "Accepted connection from %d.%d.%d.%d", clientaddr&0xF000, clientaddr&0x0F00, clientaddr&0x00F0, clientaddr&0x000F);
 
-		int opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT, O_RDWR, O_APPEND);
+		int opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
 		if(rc < 0)
 		{
 			perror("open()");
-			freeaddrinfo(my_addrinfo);
 			if(close(cfd))
 			{
 				perror("close()");
-				return -1;
 			}
 			free(clientsock);
 			return -1;
 		}
+
 
 		size_t buflen = 512;
 		char buf[512];
@@ -128,11 +140,22 @@ int main()
 			if(rc == -1)
 			{
 				perror("recv()");
-				freeaddrinfo(my_addrinfo);
 				free(clientsock);
 				close(cfd);
 				close(opfd);
-				return -1;
+				break;
+			}
+
+			bool isfinal = false;
+			int i;
+			for(i = 0; i < readbytes; i++)
+			{
+				if(buf[i] == '\n')
+				{
+					isfinal = true;
+					readbytes = i;
+					break;
+				}
 			}
 
 			writtenbytes = 0;
@@ -141,54 +164,61 @@ int main()
 				if(rc == -1)
 				{
 	                                perror("write()");
-                                	freeaddrinfo(my_addrinfo);
                         	        free(clientsock);
                 	                close(cfd);
         	                        close(opfd);
-	                                return -1;
+					break;
 				}
 
 				writtenbytes += rc;
 				readbytes -= rc;
 			}
+
+			if(isfinal) break;
 		}
 
-		char nline = '\n';
-                if(write(opfd, &nline, sizeof(char)) == -1)
-                {
-                	perror("write()");
-                        freeaddrinfo(my_addrinfo);
-                        free(clientsock);
-                        close(cfd);
-                        close(opfd);
-                        return -1;
-                }
+		char nl = '\n';
+		rc = write(opfd, &nl, sizeof(char));
+		if(rc == -1)
+		{
+			perror("write()");
+			free(clientsock);
+			close(cfd);
+			close(opfd);
+			break;
+		}
 
+		roff = lseek(opfd, 0, SEEK_SET);
+		if(roff == -1)
+		{
+			perror("lseek()");
+			free(clientsock);
+			close(cfd);
+			close(opfd);
+			break;
+		}
 
 		while(readbytes = rc = read(opfd, buf, buflen*sizeof(char)))
 		{
 			if(rc == -1)
 			{
 				perror("read()");
-				freeaddrinfo(my_addrinfo);
 				free(clientsock);
 				close(cfd);
 				close(opfd);
-				return -1;
+				break;
 			}
 
 			writtenbytes = 0;
-			while(readbytes > 0)
+			while(readbytes > 0 && (rc = send(cfd, buf+writtenbytes, readbytes, 0)))
 			{
-				rc = send(sfd, buf+writtenbytes, readbytes, 0);
 				if(rc == -1)
 				{
 					perror("send()");
-					freeaddrinfo(my_addrinfo);
 					free(clientsock);
 					close(cfd);
 					close(opfd);
-					return -1;
+					break;
 				}
 
 				writtenbytes += rc;
@@ -201,13 +231,13 @@ int main()
 		if(rc)
 		{
 			perror("close()");
-			return -1;
+			break;
 		}
 		rc = close(opfd);
 		if(rc)
 		{
 			perror("close()");
-			return -1;
+			break;
 		}
                 syslog(LOG_INFO, "Closed connection from %d.%d.%d.%d", clientaddr&0xF000, clientaddr&0x0F00, clientaddr&0x00F0, clientaddr&0x000F);
 
