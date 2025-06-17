@@ -93,6 +93,7 @@ int main(int argc, char* argv[])
                         return -1;
                 }
                 if(p) return 0;
+		printf("Running in child\n");
         }
 
 
@@ -125,7 +126,7 @@ int main(int argc, char* argv[])
 		assert(clientsocksize == sizeof(struct sockaddr_in));
 		
 		uint32_t clientaddr = htonl(((struct sockaddr_in*)clientsock)->sin_addr.s_addr);
-		syslog(LOG_INFO, "Accepted connection from %d.%d.%d.%d", clientaddr&0xF000, clientaddr&0x0F00, clientaddr&0x00F0, clientaddr&0x000F);
+		syslog(LOG_INFO, "Accepted connection from %d.%d.%d.%d", clientaddr&0xFF000000 >> 24, clientaddr&0x00FF0000 >> 16, clientaddr&0x0000FF00 >> 8, clientaddr&0x000000FF);
 
 		int opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
 		if(rc < 0)
