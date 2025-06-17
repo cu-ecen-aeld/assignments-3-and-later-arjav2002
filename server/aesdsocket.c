@@ -84,6 +84,8 @@ int main(int argc, char* argv[])
 	}
 
 
+        openlog(NULL, LOG_CONS | LOG_PERROR, LOG_SYSLOG);
+
 	if(argc > 1 && strcmp(argv[1], "-d") == 0)
         {
                 pid_t p = fork();
@@ -93,12 +95,8 @@ int main(int argc, char* argv[])
                         return -1;
                 }
                 if(p) return 0;
-		printf("Running in child\n");
+		syslog(LOG_INFO, "Running in child\n");
         }
-
-
-        openlog(NULL, LOG_CONS | LOG_PERROR, LOG_SYSLOG);
-
 
 	while(!caughtsignal) {
 		rc = listen(sfd, 1);
