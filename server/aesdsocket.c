@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 	}
 
 
-        openlog(NULL, LOG_PERROR, LOG_SYSLOG);
+        openlog(NULL, 0, LOG_SYSLOG);
 
 	if(argc > 1 && strcmp(argv[1], "-d") == 0)
         {
@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
 		assert(clientsocksize == sizeof(struct sockaddr_in));
 		
 		uint32_t clientaddr = htonl(((struct sockaddr_in*)clientsock)->sin_addr.s_addr);
-		syslog(LOG_INFO, "Accepted connection from %d.%d.%d.%d", clientaddr&0xFF000000 >> 24, clientaddr&0x00FF0000 >> 16, clientaddr&0x0000FF00 >> 8, clientaddr&0x000000FF);
+		syslog(LOG_INFO, "Accepted connection from %d.%d.%d.%d", (clientaddr&0xFF000000) >> 24, (clientaddr&0xFF0000) >> 16, (clientaddr&0xFF00) >> 8, (clientaddr&0xFF));
 
 		int opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
 		if(rc < 0)
