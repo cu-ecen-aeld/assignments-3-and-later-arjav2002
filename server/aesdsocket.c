@@ -86,6 +86,7 @@ int main(int argc, char* argv[])
 
         openlog(NULL, LOG_CONS | LOG_PERROR, LOG_SYSLOG);
 
+	syslog(LOG_INFO, "Args: %d %s", argc, argv[1]);
 	if(argc > 1 && strcmp(argv[1], "-d") == 0)
         {
                 pid_t p = fork();
@@ -94,7 +95,10 @@ int main(int argc, char* argv[])
                         perror("fork()");
                         return -1;
                 }
-                if(p) return 0;
+                if(p) {
+			syslog(LOG_INFO, "Exiting from parent\n");
+			return 0;
+		}
 		syslog(LOG_INFO, "Running in child\n");
         }
 
