@@ -92,11 +92,11 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
-aarch64-none-linux-gnu-gcc -print-sysroot
-cp /home/arjavgarg/Data/arm-cross-compiler/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu/bin/../aarch64-none-linux-gnu/libc/lib/ld-linux-aarch64.so.1 lib
-cp /home/arjavgarg/Data/arm-cross-compiler/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu/bin/../aarch64-none-linux-gnu/libc/lib64/libm.so.6 lib64
-cp /home/arjavgarg/Data/arm-cross-compiler/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu/bin/../aarch64-none-linux-gnu/libc/lib64/libresolv.so.2 lib64
-cp /home/arjavgarg/Data/arm-cross-compiler/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu/bin/../aarch64-none-linux-gnu/libc/lib64/libc.so.6 lib64
+CCBASE=`aarch64-none-linux-gnu-gcc -print-sysroot`
+cp ${CCBASE}/lib/ld-linux-aarch64.so.1 lib
+cp ${CCBASE}/lib64/libm.so.6 lib64
+cp ${CCBASE}/lib64/libresolv.so.2 lib64
+cp ${CCBASE}/lib64/libc.so.6 lib64
 
 # TODO: Make device nodes
 sudo mknod -m 666 dev/null c 1 3
