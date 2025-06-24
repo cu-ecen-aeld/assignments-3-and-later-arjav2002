@@ -29,11 +29,13 @@ typedef struct data
 {
 	struct sockaddr* clientsock;
 	int cfd;
+	bool done;
 } data_t;
 
 typedef struct node
 {
 	pthread_t thread;
+	data_t* req_data;
 	struct node* next;
 } node_t;
 
@@ -56,8 +58,8 @@ void* process_request(void* _req_data)
 		{
 			perror("close()");
 		}
-		free(clientsock);
-		free(req_data);
+	
+		req_data->done = true;	
 		return NULL;
 	}
 
@@ -66,10 +68,9 @@ void* process_request(void* _req_data)
 	if(rc)
 	{
 		perror("pthread_mutex_lock()");
-		free(clientsock);
 		close(cfd);
 		close(opfd);
-		free(req_data);
+		req_data->done = true;
 		return NULL;
 	}
 
@@ -81,10 +82,9 @@ void* process_request(void* _req_data)
 		if(rc == -1)
 		{
 			perror("recv()");
-			free(clientsock);
 			close(cfd);
 			close(opfd);
-			free(req_data);
+			req_data->done = true;
 			return NULL;
 		}
 
@@ -106,10 +106,9 @@ void* process_request(void* _req_data)
 			if(rc == -1)
 			{
 				perror("write()");
-				free(clientsock);
 				close(cfd);
 				close(opfd);
-				free(req_data);
+				req_data->done = true;
 				return NULL;
 			}
 
@@ -125,20 +124,18 @@ void* process_request(void* _req_data)
 	if(rc == -1)
 	{
 		perror("write()");
-		free(clientsock);
 		close(cfd);
 		close(opfd);
-		free(req_data);
+		req_data->done = true;
 		return NULL;
 	}
 	rc = pthread_mutex_unlock(&file_mutex);
 	if(rc)
 	{
 		perror("pthread_mutex_unlock()");
-		free(clientsock);
 		close(cfd);
 		close(opfd);
-		free(req_data);
+		req_data->done = true;
 		return NULL;
 	}
 
@@ -148,10 +145,9 @@ void* process_request(void* _req_data)
 	if(roff == -1)
 	{
 		perror("lseek()");
-		free(clientsock);
 		close(cfd);
 		close(opfd);
-		free(req_data);
+		req_data->done = true;
 		return NULL;
 	}
 
@@ -160,10 +156,9 @@ void* process_request(void* _req_data)
 		if(rc == -1)
 		{
 			perror("read()");
-			free(clientsock);
 			close(cfd);
 			close(opfd);
-			free(req_data);
+			req_data->done = true;
 			return NULL;
 		}
 
@@ -173,10 +168,9 @@ void* process_request(void* _req_data)
 			if(rc == -1)
 			{
 				perror("send()");
-				free(clientsock);
 				close(cfd);
 				close(opfd);
-				free(req_data);
+				req_data->done = true;
 				return NULL;
 			}
 
@@ -185,24 +179,23 @@ void* process_request(void* _req_data)
 		}
 	}
 
-	free(clientsock);
 	rc = close(cfd);
 	if(rc)
 	{
 		perror("close()");
-		free(req_data);
+		req_data->done = true;
 		return NULL;
 	}
 	rc = close(opfd);
 	if(rc)
 	{
 		perror("close()");
-		free(req_data);
+		req_data->done = true;
 		return NULL;
 	}
-	free(req_data);
 	syslog(LOG_INFO, "Closed connection from %d.%d.%d.%d", clientaddr&0xF000, clientaddr&0x0F00, clientaddr&0x00F0, clientaddr&0x000F);
 
+	req_data->done = true;
 	return NULL;
 }
 
@@ -239,6 +232,7 @@ int start_new_request(node_t** head, node_t** tail, data_t* req_data)
 		return -1;
 	}
 
+	(*tail)->req_data = req_data;
 	(*tail)->thread = thread;
 	(*tail)->next = NULL;
 
@@ -315,6 +309,31 @@ static void timer_thread(union sigval sigval)
 	}
 	close(fd);
 	;
+}
+
+void cleanup(node_t** head)
+{
+	node_t* ptr = *head;
+	node_t* last = NULL;
+	while(ptr)
+	{
+		if(ptr->req_data->done)
+		{
+			pthread_join(ptr->thread, NULL);
+			free(ptr->req_data->clientsock);
+			free(ptr->req_data);
+			if(last) last->next = ptr->next;
+			else *head = ptr->next;
+			node_t* tofree = ptr;
+			ptr = ptr->next;
+			free(tofree);
+		}
+		else
+		{
+			last = ptr;
+			ptr = ptr->next;
+		}
+	}
 }
 
 int main(int argc, char* argv[])
@@ -414,8 +433,11 @@ int main(int argc, char* argv[])
 	}
 
 	node_t *head, *tail;
+	head = tail = NULL;
 
 	while(!caughtsignal) {
+		cleanup(&head);
+
 		rc = listen(sfd, 1);
 		if(rc)
 		{
@@ -449,6 +471,7 @@ int main(int argc, char* argv[])
 			continue;
 		}
 
+		req_data->done = false;
 		req_data->clientsock = clientsock;
 		req_data->cfd = cfd;
 
@@ -464,6 +487,8 @@ int main(int argc, char* argv[])
 	while(head)
 	{
 		pthread_join(head->thread, NULL);
+		free(head->req_data->clientsock);
+		free(head->req_data);
 		node_t *prev = head;
 		head = head->next;
 		free(prev);
