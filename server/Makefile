@@ -5,9 +5,11 @@ TARGET ?= aesdsocket
 LDFLAGS ?= -lpthread -lrt
 all: clean aesdsocket
 aesdsocket : aesdsocket.o
+	ls
 	$(CC) ${CFLAGS} $^ -o $@ ${INCLUDES} ${LDFLAGS}
 
 aesdsocket.o : aesdsocket.c
+	echo "Compiling!"
 	$(CC) -g -Wall -c aesdsocket.c 
 
 clean: 
