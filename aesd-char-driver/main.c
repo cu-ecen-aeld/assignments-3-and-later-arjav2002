@@ -36,7 +36,8 @@ struct aesd_dev aesd_device;
 int aesd_open(struct inode *inode, struct file *filp)
 {
     PDEBUG("open");
-	struct cdev* cdevptr = inode->i_cdev;
+	struct cdev* cdevptr;
+        cdevptr	= inode->i_cdev;
 	struct aesd_dev* aesd_device = container_of(cdevptr, struct aesd_dev, cdev);
 	filp->private_data = aesd_device;	
     return 0;
@@ -54,19 +55,22 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     ssize_t retval = 0;
     PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
 
-	struct aesd_dev *mdevptr = filp->private_data;
+	struct aesd_dev *mdevptr;
+        mdevptr	= filp->private_data;
 	
 	mutex_lock(&mdevptr->buff_mut);
 	
 	size_t into_entry_nchars;
-	struct aesd_buffer_entry *buffentry = aesd_circular_buffer_find_entry_offset_for_fpos(&mdevptr->circ_buffer, *f_pos, &into_entry_nchars);
+	struct aesd_buffer_entry *buffentry;
+	buffentry = aesd_circular_buffer_find_entry_offset_for_fpos(&mdevptr->circ_buffer, *f_pos, &into_entry_nchars);
 	if(!buffentry)
 	{
 		retval = 0;
 		goto finish_read;
 	}
 
-	size_t tocopy = count < buffentry->size ? count : buffentry->size;
+	size_t tocopy;
+        tocopy = count < buffentry->size ? count : buffentry->size;
 	copy_to_user(buf, buffentry->buffptr, tocopy);
 	retval = tocopy;
 
@@ -77,10 +81,11 @@ finish_read: mutex_unlock(&mdevptr->buff_mut);
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
                 loff_t *f_pos)
 {
-    ssize_t retval = -ENOMEM;
+    ssize_t retval;
+    retval = -ENOMEM;
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
     
-	struct aesd_dev *mdevptr 
+	struct aesd_dev *mdevptr; 
 
 	mutex_lock(&mdevptr->buff_mut);
 
@@ -101,7 +106,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 	buffer_entry.size = count;
 	aesd_circular_buffer_add_entry(&mdevptr->circ_buffer, &buffer_entry);
-	retval = count;);
+	retval = count;
 
 
 finish_write: mutex_unlock(&mdevptr->buff_mut);
