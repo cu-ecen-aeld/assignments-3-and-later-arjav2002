@@ -114,6 +114,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	}
 
 	buffer_entry.size = count;
+	copy_from_user(buffer_entry.buffptr, buf, count);
 	aesd_circular_buffer_add_entry(&mdevptr->circ_buffer, &buffer_entry);
 	retval = count;
 
