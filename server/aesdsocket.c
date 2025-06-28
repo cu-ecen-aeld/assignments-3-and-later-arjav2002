@@ -503,8 +503,8 @@ int main(int argc, char* argv[])
 
 	freeaddrinfo(my_addrinfo);
 	close(sfd);
-	timer_delete(tid);
 #ifndef USE_AESD_CHAR_DEVICE
+	timer_delete(tid);
 	remove("/var/tmp/aesdsocketdata");
 #endif
 	syslog(LOG_INFO, "Caught signal, exiting");
