@@ -10,6 +10,7 @@
 
 #ifdef __KERNEL__
 #include <linux/string.h>
+#include <linux/slab.h>
 #else
 #include <string.h>
 #endif
@@ -58,7 +59,7 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
 		buffer->out_offs = (buffer->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
 	}
 #ifdef __KERNEL__
-	if(buffer->entry[buffer->in_offs])
+	if(buffer->entry[buffer->in_offs].buffptr)
 	{
 		kfree(buffer->entry[buffer->in_offs].buffptr);
 	}
