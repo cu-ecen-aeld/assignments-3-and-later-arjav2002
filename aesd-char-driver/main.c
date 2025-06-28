@@ -92,6 +92,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     retval = -ENOMEM;
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
     
+        mdevptr	= filp->private_data;
 
 	mutex_lock(&mdevptr->buff_mut);
 
