@@ -178,9 +178,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	{
 		memcpy(new_working_entry.buffptr+mdevptr->working_buffer_entry.size, current_buffer.buffptr, current_buffer.size);
 	}
-	mdevptr->working_buffer_entry.size = new_working_entry.size;
-	mdevptr->working_buffer_entry.buffptr = new_working_entry.buffptr;
-	
+	mdevptr->working_buffer_entry = new_working_entry;
+	PDEBUG("new global size: %d\tcurrent global size: %d\tcurrent local size: %d\n", new_working_entry.size, mdevptr->working_buffer_entry.size, current_buffer.size);
 finish_buffering: kfree(copyarea);
 finish_write: mutex_unlock(&mdevptr->buff_mut);
 	      if(retval > 0)
