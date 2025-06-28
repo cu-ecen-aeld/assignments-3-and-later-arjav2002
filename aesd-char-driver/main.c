@@ -79,6 +79,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 		retval = -EFAULT;
 		goto finish_read;
 	}
+	*f_pos += tocopy;
 	retval = tocopy;
 
 finish_read: mutex_unlock(&mdevptr->buff_mut);
