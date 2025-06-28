@@ -40,8 +40,6 @@ int aesd_open(struct inode *inode, struct file *filp)
     PDEBUG("open");
         cdevptr	= inode->i_cdev;
         aesd_device = container_of(cdevptr, struct aesd_dev, cdev);
-	aesd_device->working_buffer_entry.size = 0;
-	aesd_device->working_buffer_entry.buffptr = NULL;
 	filp->private_data = aesd_device;	
     return 0;
 }
