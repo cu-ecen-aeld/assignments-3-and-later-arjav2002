@@ -161,6 +161,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	// leftover local buffer needs to be added to global buffer	
 	new_working_entry.buffptr = NULL;
 	new_working_entry.size = mdevptr->working_buffer_entry.size + current_buffer.size;
+	PDEBUG("new global size: %d\tcurrent global size: %d\tcurrent local size: %d\n", new_working_entry.size, mdevptr->working_buffer_entry.size, current_buffer.size);
 	if(new_working_entry.size) new_working_entry.buffptr = kmalloc(new_working_entry.size, GFP_KERNEL);
 	if(!new_working_entry.buffptr)
 	{
