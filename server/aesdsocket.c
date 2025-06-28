@@ -145,7 +145,7 @@ void* process_request(void* _req_data)
 		return NULL;
 	}
 
-
+/*
 	off_t roff;
 	roff = lseek(opfd, 0, SEEK_SET);
 	if(roff == -1)
@@ -155,7 +155,33 @@ void* process_request(void* _req_data)
 		close(opfd);
 		req_data->done = true;
 		return NULL;
-	}
+	}*/
+	rc = close(opfd);
+        if(rc)
+        {
+                perror("close()");
+		close(opfd);
+                req_data->done = true;
+                return NULL;
+        }
+	#ifndef USE_AESD_CHAR_DEVICE
+        int opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+#else
+        int opfd = rc = open("/dev/aesdchar", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+#endif
+        if(rc < 0)
+        {
+                perror("open()");
+                if(close(cfd))
+                {
+                        perror("close()");
+                }
+
+                req_data->done = true;
+                return NULL;
+        }
+
+
 
 	while(readbytes = rc = read(opfd, buf, buflen*sizeof(char)))
 	{
