@@ -48,12 +48,7 @@ int aesd_open(struct inode *inode, struct file *filp)
 
 int aesd_release(struct inode *inode, struct file *filp)
 {
-	struct cdev* cdevptr;
-	struct aesd_dev* aesd_device;
     PDEBUG("release");	
-        cdevptr	= inode->i_cdev;
-        aesd_device = container_of(cdevptr, struct aesd_dev, cdev);
-	if(aesd_device->working_buffer_entry.size) kfree(aesd_device->working_buffer_entry.buffptr);
     return 0;
 }
 
@@ -249,6 +244,8 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
+	if(aesd_device.working_buffer_entry.size) kfree(aesd_device.working_buffer_entry.buffptr);
+ 
 
     unregister_chrdev_region(devno, 1);
 }
