@@ -72,7 +72,11 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 	}
 
         tocopy = count < buffentry->size ? count : buffentry->size;
-	copy_to_user(buf, buffentry->buffptr, tocopy);
+	if(copy_to_user(buf, buffentry->buffptr, tocopy))
+	{
+		retval = -EFAULT;
+		goto finish_read;
+	}
 	retval = tocopy;
 
 finish_read: mutex_unlock(&mdevptr->buff_mut);
@@ -101,7 +105,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	buffer_entry.buffptr = kmalloc(count, GFP_KERNEL);
 	if(!buffer_entry.buffptr)
 	{
-		retval = _ENOMEM;
+		retval = -ENOMEM;
 		goto finish_write;
 	}
 
@@ -154,8 +158,8 @@ int aesd_init_module(void)
      * TODO: initialize the AESD specific portion of the device
      */
 
-	mutex_init(aesd_device.buff_mut);
-	aesd_circular_buffer_init(aesd_device.circ_buffer);
+	mutex_init(&aesd_device.buff_mut);
+	aesd_circular_buffer_init(&aesd_device.circ_buffer);
     result = aesd_setup_cdev(&aesd_device);
 
     if( result ) {
