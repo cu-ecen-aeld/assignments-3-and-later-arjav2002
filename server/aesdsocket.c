@@ -14,6 +14,8 @@
 #include <pthread.h>
 #include <time.h>
 
+#define USE_AESD_CHAR_DEVICE 1
+
 static bool caughtsignal = false;
 
 
@@ -50,7 +52,11 @@ void* process_request(void* _req_data)
 	syslog(LOG_INFO, "Accepted connection from %d.%d.%d.%d", (clientaddr&0xFF000000) >> 24, (clientaddr&0xFF0000) >> 16, (clientaddr&0xFF00) >> 8, (clientaddr&0xFF));
 
 	int rc;
+#ifndef USE_AESD_CHAR_DEVICE
 	int opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+#else
+	int opfd = rc = open("/dev/aesdchar", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+#endif
 	if(rc < 0)
 	{
 		perror("open()");
@@ -409,7 +415,7 @@ int main(int argc, char* argv[])
 			return 0;
 		}
         }
-
+#ifndef USE_AESD_CHAR_DEVICE
 	int clock_id = CLOCK_MONOTONIC;
 	timer_t tid;
 	struct sigevent sev;
@@ -431,6 +437,7 @@ int main(int argc, char* argv[])
 		perror("timer_settime()");
 		return -1;
 	}
+#endif
 
 	node_t *head, *tail;
 	head = tail = NULL;
@@ -497,8 +504,9 @@ int main(int argc, char* argv[])
 	freeaddrinfo(my_addrinfo);
 	close(sfd);
 	timer_delete(tid);
-
+#ifndef USE_AESD_CHAR_DEVICE
 	remove("/var/tmp/aesdsocketdata");
+#endif
 	syslog(LOG_INFO, "Caught signal, exiting");
 	return 0;
 }
