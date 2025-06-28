@@ -68,6 +68,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 	if(!buffentry)
 	{
 		retval = 0;
+		PDEBUG("it is empty\n");
 		goto finish_read;
 	}
 
