@@ -40,13 +40,20 @@ int aesd_open(struct inode *inode, struct file *filp)
     PDEBUG("open");
         cdevptr	= inode->i_cdev;
         aesd_device = container_of(cdevptr, struct aesd_dev, cdev);
+	aesd_device->working_buffer_entry.size = 0;
+	aesd_device->working_buffer_entry.buffptr = NULL;
 	filp->private_data = aesd_device;	
     return 0;
 }
 
 int aesd_release(struct inode *inode, struct file *filp)
 {
-    PDEBUG("release");
+	struct cdev* cdevptr;
+	struct aesd_dev* aesd_device;
+    PDEBUG("release");	
+        cdevptr	= inode->i_cdev;
+        aesd_device = container_of(cdevptr, struct aesd_dev, cdev);
+	if(aesd_device->working_buffer_entry.size) kfree(aesd_device->working_buffer_entry.buffptr);
     return 0;
 }
 
@@ -92,6 +99,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     ssize_t retval;
 	struct aesd_dev *mdevptr; 
 	struct aesd_buffer_entry buffer_entry;
+	char* copyarea;
+	struct aesd_buffer_entry current_buffer;
+	int probe;
+	struct aesd_buffer_entry new_working_entry;
     retval = -ENOMEM;
     PDEBUG("write %zu bytes with offset %lld",count,*f_pos);
     
@@ -99,27 +110,81 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 	mutex_lock(&mdevptr->buff_mut);
 
-	if(buf[count-1] != '\n')
+	/*if(buf[count-1] != '\n')
 	{
 		PDEBUG("Ignoring since last char is not '\\n'\n");
 		retval = 0;
 		goto finish_write;
-	}
+	}*/
 
-	buffer_entry.buffptr = kmalloc(count, GFP_KERNEL);
-	if(!buffer_entry.buffptr)
+	copyarea = kmalloc(count, GFP_KERNEL);
+	if(!copyarea)
 	{
 		retval = -ENOMEM;
 		goto finish_write;
 	}
 
-	buffer_entry.size = count;
-	copy_from_user(buffer_entry.buffptr, buf, count);
-	aesd_circular_buffer_add_entry(&mdevptr->circ_buffer, &buffer_entry);
-	retval = count;
+	copy_from_user(copyarea, buf, count);
 
+	retval=0;
+	current_buffer.buffptr = copyarea;
+	current_buffer.size = 0;
+	probe = -1;
+	while(++probe < count/sizeof(char))
+	{	
+		// keep track of local changes
+		current_buffer.size+=sizeof(char);
+		if(copyarea[probe] == '\n')
+		{
+			//attach local changes to working entry and flush.
+			struct aesd_buffer_entry newbuffer_entry;
+			newbuffer_entry.size = current_buffer.size + mdevptr->working_buffer_entry.size;
+			newbuffer_entry.buffptr = kmalloc(newbuffer_entry.size, GFP_KERNEL);
+			if(!newbuffer_entry.buffptr)
+			{
+				//nothing lost, nothing gained, let's pretend this never happened.
+				goto finish_buffering;
+			}
 
+			memcpy(newbuffer_entry.buffptr, mdevptr->working_buffer_entry.buffptr, mdevptr->working_buffer_entry.size);
+			memcpy(newbuffer_entry.buffptr+mdevptr->working_buffer_entry.size, current_buffer.buffptr, current_buffer.size);
+			aesd_circular_buffer_add_entry(&mdevptr->circ_buffer, &newbuffer_entry);
+			
+			if(mdevptr->working_buffer_entry.size) kfree(mdevptr->working_buffer_entry.buffptr);
+			mdevptr->working_buffer_entry.size = 0;
+			current_buffer.buffptr += current_buffer.size;
+			current_buffer.size = 0;
+		}
+		retval += sizeof(char);
+	}
+
+	// leftover local buffer needs to be added to global buffer	
+	new_working_entry.buffptr = NULL;
+	new_working_entry.size = mdevptr->working_buffer_entry.size + current_buffer.size;
+	if(new_working_entry.size) new_working_entry.buffptr = kmalloc(new_working_entry.size, GFP_KERNEL);
+	if(!new_working_entry.buffptr)
+	{
+		// local buffer content cannot be saved right now, it needs to be sent again
+		retval -= current_buffer.size;
+		goto finish_buffering;
+	}
+	if(mdevptr->working_buffer_entry.size)
+	{
+		memcpy(new_working_entry.buffptr, mdevptr->working_buffer_entry.buffptr, mdevptr->working_buffer_entry.size);
+		kfree(mdevptr->working_buffer_entry.buffptr);
+	}
+	if(current_buffer.size)
+	{
+		memcpy(new_working_entry.buffptr+mdevptr->working_buffer_entry.size, current_buffer.buffptr, current_buffer.size);
+	}
+	mdevptr->working_buffer_entry = new_working_entry;
+	
+finish_buffering: kfree(copyarea);
 finish_write: mutex_unlock(&mdevptr->buff_mut);
+	      if(retval > 0)
+	      {
+		      *f_pos += retval;
+	      }
     return retval;
 }
 struct file_operations aesd_fops = {
@@ -162,7 +227,7 @@ int aesd_init_module(void)
     /**
      * TODO: initialize the AESD specific portion of the device
      */
-
+	aesd_device.working_buffer_entry.size = 0;
 	mutex_init(&aesd_device.buff_mut);
 	aesd_circular_buffer_init(&aesd_device.circ_buffer);
     result = aesd_setup_cdev(&aesd_device);
