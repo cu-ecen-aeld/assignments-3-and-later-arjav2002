@@ -165,9 +165,9 @@ void* process_request(void* _req_data)
                 return NULL;
         }
 	#ifndef USE_AESD_CHAR_DEVICE
-        int opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+        opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
 #else
-        int opfd = rc = open("/dev/aesdchar", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+        opfd = rc = open("/dev/aesdchar", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
 #endif
         if(rc < 0)
         {
