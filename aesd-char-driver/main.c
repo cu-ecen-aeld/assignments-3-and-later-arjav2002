@@ -101,6 +101,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     
         mdevptr	= filp->private_data;
 
+	PDEBUG("in_off is now: %d", mdevptr->circ_buffer.in_offs);
 	mutex_lock(&mdevptr->buff_mut);
 
 	/*if(buf[count-1] != '\n')
@@ -142,6 +143,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 			memcpy(newbuffer_entry.buffptr, mdevptr->working_buffer_entry.buffptr, mdevptr->working_buffer_entry.size);
 			memcpy(newbuffer_entry.buffptr+mdevptr->working_buffer_entry.size, current_buffer.buffptr, current_buffer.size);
 			aesd_circular_buffer_add_entry(&mdevptr->circ_buffer, &newbuffer_entry);
+			
+			PDEBUG("in_off is now: %d", mdevptr->circ_buffer.in_offs);
 			
 			if(mdevptr->working_buffer_entry.size) kfree(mdevptr->working_buffer_entry.buffptr);
 			mdevptr->working_buffer_entry.size = 0;
