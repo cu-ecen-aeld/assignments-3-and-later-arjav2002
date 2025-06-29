@@ -55,7 +55,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 {
     ssize_t retval = 0;
 	struct aesd_dev *mdevptr;
-	size_t into_entry_nchars;
+	size_t into_entry_nbytes;
 	struct aesd_buffer_entry *buffentry;
 	size_t tocopy;
     PDEBUG("read %zu bytes with offset %lld",count,*f_pos);
@@ -64,7 +64,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 	
 	mutex_lock(&mdevptr->buff_mut);
 	
-	buffentry = aesd_circular_buffer_find_entry_offset_for_fpos(&mdevptr->circ_buffer, *f_pos, &into_entry_nchars);
+	buffentry = aesd_circular_buffer_find_entry_offset_for_fpos(&mdevptr->circ_buffer, *f_pos, &into_entry_nbytes);
 	if(!buffentry)
 	{
 		retval = 0;
@@ -72,8 +72,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 		goto finish_read;
 	}
 
-        tocopy = count < buffentry->size ? count : buffentry->size;
-	if(retval = copy_to_user(buf, buffentry->buffptr, tocopy))
+        tocopy = (count+into_entry_nbytes) <= buffentry->size ? count : (buffentry->size-into_entry_nbytes);
+	if(retval = copy_to_user(buf, buffentry->buffptr+into_entry_nbytes, tocopy))
 	{
 		PDEBUG("copy to user returned: %lld\n", tocopy);
 		retval = -EFAULT;
