@@ -72,8 +72,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 		goto finish_read;
 	}
 
-        tocopy = (count+into_entry_nbytes) <= buffentry->size ? count : (buffentry->size-into_entry_nbytes);
-	if(retval = copy_to_user(buf, buffentry->buffptr+into_entry_nbytes, tocopy))
+        tocopy = count < (buffentry->size - into_entry_nbytes) ? count : (buffentry->size - into_entry_nbytes);
+	if(retval = copy_to_user(buf, buffentry->buffptr + into_entry_nbytes/sizeof(char), tocopy))
 	{
 		PDEBUG("copy to user returned: %lld\n", tocopy);
 		retval = -EFAULT;
