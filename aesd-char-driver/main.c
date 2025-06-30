@@ -61,7 +61,7 @@ loff_t aesd_llseek(struct file* filp, loff_t offset, int whence)
 	// find size, then call fixed size llseek
 	mutex_lock(&mdevptr->buff_mut);
 	buffsize = 0;
-	for(i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) buffsize += mdevptr->circ_buff.entry[i].size;
+	for(i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) buffsize += mdevptr->circ_buffer.entry[i].size;
 	mutex_unlock(&mdevptr->buff_mut);
 
 	return fixed_size_llseek(filp, offset, whence, buffsize);
