@@ -81,9 +81,10 @@ long aesd_adjust_file_offset(struct file *filp, uint32_t write_cmd, uint32_t wri
 
 	PDEBUG("Size at %d is %d\n", write_cmd, mdevptr->circ_buffer.entry[write_cmd].size);
 	if(mdevptr->circ_buffer.entry[write_cmd].size == 0
-		|| write_cmd_offset <= mdevptr->circ_buffer.entry[write_cmd].size)
+		|| write_cmd_offset >= mdevptr->circ_buffer.entry[write_cmd].size)
 		return -EINVAL;
 
+	PDEBUG("File offset was at: %d\n", filp->f_pos);
 	filp->f_pos += write_cmd_offset;
 	i = mdevptr->circ_buffer.out_offs;
 	while(i != write_cmd)
@@ -93,7 +94,7 @@ long aesd_adjust_file_offset(struct file *filp, uint32_t write_cmd, uint32_t wri
 	}
 	mutex_unlock(&mdevptr->buff_mut);
 
-	PDEBUG("Adjusted file offset!\n");
+	PDEBUG("Adjusted file offset to %d !\n", filp->f_pos);
 
 	return 0;
 
