@@ -212,12 +212,14 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 				goto finish_buffering;
 			}
 
+			//copy global and local into newbuffer and add it into the circular buffer
 			memcpy(newbuffer_entry.buffptr, mdevptr->working_buffer_entry.buffptr, mdevptr->working_buffer_entry.size);
 			memcpy(newbuffer_entry.buffptr+mdevptr->working_buffer_entry.size, current_buffer.buffptr, current_buffer.size);
 			aesd_circular_buffer_add_entry(&mdevptr->circ_buffer, &newbuffer_entry);
 			
 			PDEBUG("in_off is now: %d", mdevptr->circ_buffer.in_offs);
 			
+			// clean up global and local buffers
 			if(mdevptr->working_buffer_entry.size) kfree(mdevptr->working_buffer_entry.buffptr);
 			mdevptr->working_buffer_entry.size = 0;
 			current_buffer.buffptr += current_buffer.size;
