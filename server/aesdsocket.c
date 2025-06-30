@@ -44,7 +44,7 @@ typedef struct node
 
 static pthread_mutex_t file_mutex;
 
-bool is_seek(const char* buff, size_t buffsize, uint32_t* x, uint32_t* y)
+bool is_seek(char* buff, size_t buffsize, uint32_t* x, uint32_t* y)
 {
 	const char* prefix = "AESDCHAR_IOCSEEKTO:";
 	const int preflen = 19;
@@ -66,8 +66,8 @@ bool is_seek(const char* buff, size_t buffsize, uint32_t* x, uint32_t* y)
 
 	buff[comma] = buff[newline] = 0;
 
-	x = atoi(buff+preflen);
-	y = atoi(buff+comma+1);
+	*x = atoi(buff+preflen);
+	*y = atoi(buff+comma+1);
 
 	return true;
 
@@ -148,7 +148,7 @@ void* process_request(void* _req_data)
 				perror("ioctl()");
 				close(cfd);
 				close(opfd);
-				req_dawta->done = true;
+				req_data->done = true;
 				return NULL;
 			}
 			break;
