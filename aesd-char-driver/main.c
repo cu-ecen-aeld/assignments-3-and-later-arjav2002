@@ -50,6 +50,23 @@ int aesd_release(struct inode *inode, struct file *filp)
     return 0;
 }
 
+loff_t aesd_llseek(struct file* filp, loff_t offset, int whence)
+{
+	struct aesd_dev *mdevptr;
+	size_t buffsize;
+	int i;
+	PDEBUG("Seeking offset: %lld\twhence: %d\n", offset, whence);
+	mdevptr = filp->private_data;
+
+	// find size, then call fixed size llseek
+	mutex_lock(&mdevptr->buff_mut);
+	buffsize = 0;
+	for(i = 0; i < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i++) buffsize += mdevptr->circ_buff.entry[i].size;
+	mutex_unlock(&mdevptr->buff_mut);
+
+	return fixed_size_llseek(filp, offset, whence, buffsize);
+}
+
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
                 loff_t *f_pos)
 {
@@ -190,6 +207,7 @@ struct file_operations aesd_fops = {
     .write =    aesd_write,
     .open =     aesd_open,
     .release =  aesd_release,
+    .llseek =	aesd_llseek
 };
 
 static int aesd_setup_cdev(struct aesd_dev *dev)

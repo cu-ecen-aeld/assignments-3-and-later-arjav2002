@@ -13,6 +13,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
+#include "aesd_ioctl.h"
 
 #define USE_AESD_CHAR_DEVICE 1
 
@@ -42,6 +43,35 @@ typedef struct node
 } node_t;
 
 static pthread_mutex_t file_mutex;
+
+bool is_seek(const char* buff, size_t buffsize, uint32_t* x, uint32_t* y)
+{
+	const char* prefix = "AESDCHAR_IOCSEEKTO:";
+	const int preflen = 19;
+	int i, comma, newline;
+	for(i = 0; i < preflen; i++) if(buff[i] != prefix[i]) return false;
+	for(comma=-1; i < buffsize; i++) if(buff[i] == ',')
+	{
+		comma = i++;
+		break;
+	}
+	if(comma == -1) return false;
+
+	for(newline=-1; i < buffsize; i++) if(buff[i] == '\n')
+	{
+		newline = i;
+		break;
+	}
+	if(newline == -1) return false;
+
+	buff[comma] = buff[newline] = 0;
+
+	x = atoi(buff+preflen);
+	y = atoi(buff+comma+1);
+
+	return true;
+
+}
 
 void* process_request(void* _req_data)
 {
@@ -83,6 +113,8 @@ void* process_request(void* _req_data)
 	size_t buflen = 512;
 	char buf[512];
 	ssize_t readbytes, writtenbytes;
+	bool is_llseek = false;
+	uint32_t x, y;
 	while(readbytes = rc = recv(cfd, buf, buflen*sizeof(char), 0))
 	{
 		if(rc == -1)
@@ -104,6 +136,22 @@ void* process_request(void* _req_data)
 				readbytes = i;
 				break;
 			}
+		}
+
+		if(is_llseek = is_seek(buf, buflen, &x, &y))
+		{
+			struct aesd_seekto seektostr;
+			seektostr.write_cmd = x;
+			seektostr.write_cmd_offset = y;
+			if(rc = ioctl(opfd, AESDCHAR_IOCSEEKTO, &seektostr))
+			{
+				perror("ioctl()");
+				close(cfd);
+				close(opfd);
+				req_dawta->done = true;
+				return NULL;
+			}
+			break;
 		}
 
 		writtenbytes = 0;
@@ -145,41 +193,34 @@ void* process_request(void* _req_data)
 		return NULL;
 	}
 
-/*
-	off_t roff;
-	roff = lseek(opfd, 0, SEEK_SET);
-	if(roff == -1)
-	{
-		perror("lseek()");
-		close(cfd);
-		close(opfd);
-		req_data->done = true;
-		return NULL;
-	}*/
-	rc = close(opfd);
-        if(rc)
-        {
-                perror("close()");
-		close(opfd);
-                req_data->done = true;
-                return NULL;
-        }
-	#ifndef USE_AESD_CHAR_DEVICE
-        opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
-#else
-        opfd = rc = open("/dev/aesdchar", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
-#endif
-        if(rc < 0)
-        {
-                perror("open()");
-                if(close(cfd))
-                {
-                        perror("close()");
-                }
 
-                req_data->done = true;
-                return NULL;
-        }
+	if(!is_llseek)
+	{
+		rc = close(opfd);
+		if(rc)
+		{
+			perror("close()");
+			close(opfd);
+			req_data->done = true;
+			return NULL;
+		}
+#ifndef USE_AESD_CHAR_DEVICE
+		opfd = rc = open("/var/tmp/aesdsocketdata", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+#else
+		opfd = rc = open("/dev/aesdchar", O_CREAT | O_RDWR | O_APPEND, S_IRUSR | S_IWUSR);
+#endif
+		if(rc < 0)
+		{
+			perror("open()");
+			if(close(cfd))
+			{
+				perror("close()");
+			}
+
+			req_data->done = true;
+			return NULL;
+		}
+	}
 
 
 
