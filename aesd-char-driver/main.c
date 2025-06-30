@@ -74,6 +74,8 @@ long aesd_adjust_file_offset(struct file *filp, uint32_t write_cmd, uint32_t wri
 	uint8_t i;
 	mdevptr = filp->private_data;
 
+	PDEBUG("Write_cmd: %d\tWritecmd offset: %d\n", write_cmd, write_cmd_offset);
+
 	mutex_lock(&mdevptr->buff_mut);
 	if(write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED
 		|| mdevptr->circ_buffer.entry[write_cmd].size == 0
@@ -108,6 +110,7 @@ long aesd_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			break;
 		}
 		default:
+			PDEBUG("Command: %d not supported\n", cmd);
 			return -EINVAL;
 
 	}
