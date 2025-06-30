@@ -93,6 +93,8 @@ long aesd_adjust_file_offset(struct file *filp, uint32_t write_cmd, uint32_t wri
 	}
 	mutex_unlock(&mdevptr->buff_mut);
 
+	PDEBUG("Adjusted file offset!\n");
+
 	return 0;
 
 }
@@ -106,6 +108,7 @@ long aesd_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			struct aesd_seekto seekto;
 			if(copy_from_user(&seekto, (const void __user *)arg, sizeof(seekto)) != 0)
 			{
+				PDEBUG("Could not copy from user in aesd_unlocked_ioctl\n");
 				return -EFAULT;
 			}
 			return aesd_adjust_file_offset(filp, seekto.write_cmd, seekto.write_cmd_offset);
