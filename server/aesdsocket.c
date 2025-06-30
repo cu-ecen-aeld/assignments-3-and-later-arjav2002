@@ -113,8 +113,6 @@ void* process_request(void* _req_data)
 	size_t buflen = 512;
 	char buf[512];
 	ssize_t readbytes, writtenbytes;
-	bool is_llseek = false;
-	uint32_t x, y;
 	while(readbytes = rc = recv(cfd, buf, buflen*sizeof(char), 0))
 	{
 		if(rc == -1)
@@ -138,7 +136,8 @@ void* process_request(void* _req_data)
 			}
 		}
 
-		if(is_llseek = is_seek(buf, buflen, &x, &y))
+		uint32_t x, y;
+		if(is_seek(buf, buflen, &x, &y))
 		{
 			struct aesd_seekto seektostr;
 			seektostr.write_cmd = x;
@@ -193,7 +192,7 @@ void* process_request(void* _req_data)
 		return NULL;
 	}
 
-
+/*
 	if(!is_llseek)
 	{
 		rc = close(opfd);
@@ -221,6 +220,19 @@ void* process_request(void* _req_data)
 			return NULL;
 		}
 	}
+*/
+
+	-
+       off_t roff;
+       roff = lseek(opfd, 0, SEEK_SET);
+       if(roff == -1)
+       {
+               perror("lseek()");
+               close(cfd);
+               close(opfd);
+               req_data->done = true;
+               return NULL;
+       }
 
 
 

@@ -22,6 +22,7 @@ int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
 
 #include "aesd-circular-buffer.h"
+#include "aesd_ioctl.h"
 
 MODULE_AUTHOR("Arjav Garg");
 MODULE_LICENSE("Dual BSD/GPL");
@@ -65,6 +66,51 @@ loff_t aesd_llseek(struct file* filp, loff_t offset, int whence)
 	mutex_unlock(&mdevptr->buff_mut);
 
 	return fixed_size_llseek(filp, offset, whence, buffsize);
+}
+
+long aesd_adjust_file_offset(struct file *filp, uint32_t write_cmd, uint32_t write_cmd_offset)
+{
+	struct aesd_dev *mdevptr;
+	uint8_t i;
+	mdevptr = filp->private_data;
+
+	mutex_lock(&mdevptr->buff_mut);
+	if(write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED
+		|| mdevptr->circ_buffer.entry[write_cmd].size == 0
+		|| write_cmd_offset <= mdevptr->circ_buffer.entry[write_cmd].size)
+		return -EINVAL;
+
+	filp->f_pos += write_cmd_offset;
+	i = mdevptr->circ_buffer.out_offs;
+	while(i != write_cmd)
+	{
+		filp->f_pos += mdevptr->circ_buffer.entry[i].size;
+		i = (i+1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+	}
+	mutex_unlock(&mdevptr->buff_mut);
+
+	return 0;
+
+}
+
+long aesd_unlocked_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	switch(cmd)
+	{
+		case AESDCHAR_IOCSEEKTO:
+		{
+			struct aesd_seekto seekto;
+			if(copy_from_user(&seekto, (const void __user *)arg, sizeof(seekto)) != 0)
+			{
+				return -EFAULT;
+			}
+			return aesd_adjust_file_offset(filp, seekto.write_cmd, seekto.write_cmd_offset);
+			break;
+		}
+		default:
+			return -EINVAL;
+
+	}
 }
 
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
@@ -207,7 +253,8 @@ struct file_operations aesd_fops = {
     .write =    aesd_write,
     .open =     aesd_open,
     .release =  aesd_release,
-    .llseek =	aesd_llseek
+    .llseek =	aesd_llseek,
+    .unlocked_ioctl = 	aesd_unlocked_ioctl
 };
 
 static int aesd_setup_cdev(struct aesd_dev *dev)
