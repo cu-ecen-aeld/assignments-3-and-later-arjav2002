@@ -227,16 +227,19 @@ void* process_request(void* _req_data)
 	}
 */
 
-       off_t roff;
-       roff = lseek(opfd, 0, SEEK_SET);
-       if(roff == -1)
-       {
-               perror("lseek()");
-               close(cfd);
-               close(opfd);
-               req_data->done = true;
-               return NULL;
-       }
+	if(!isseek)
+	{
+	       off_t roff;
+	       roff = lseek(opfd, 0, SEEK_SET);
+	       if(roff == -1)
+	       {
+		       perror("lseek()");
+		       close(cfd);
+		       close(opfd);
+		       req_data->done = true;
+		       return NULL;
+	       }
+	}
 
 	while(readbytes = rc = read(opfd, buf, buflen*sizeof(char)))
 	{
